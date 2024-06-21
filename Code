@@ -1,0 +1,6 @@
+import itertools
+# input the coordinates of cities
+capitals = {
+    'Iowa': (41.8780, -93.0977),
+    'Washington, DC': (38.9072, -77.0369),
+    # other cities coordinates
