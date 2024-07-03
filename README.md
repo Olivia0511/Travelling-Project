@@ -3,13 +3,11 @@ Project Objective
 
 Solution Approach
 1. import the math function
-   - using equation to calculate the distance between different cities
-   - x for latitude and y for longitude
-2. Find optimal approach
-   - using while loop to find all the combination of cities
-   - using while loop to find the distance between different combination of cities
-   - find the minimum distance
-   - find the optimal approach
-3. Input cities coordinates
-4. print the answer
-   
+2. make a dictionary about every capitals' location(altitude, longitude)
+3. Define the Haversine Formula and use it to calculate the distance between two points on the Earth's surface by giving their latitude and longitude.
+4. Build a distance matrix: calculate the distances between each pair of state capitals and then stores them in a dictionary
+5. Find the distance and find the nearest city:
+   -Create a set of unvisited cities, remove the starting city
+   - current city is starting city and total distance at first is 0.
+Then repeating select the nearest unvisited city
+   - add the distance from the last visited city to the end city
