@@ -1,101 +1,101 @@
+import pandas as pd
+import numpy as np
+from sklearn.cluster import KMeans
+from geopy.distance import geodesic
+
+# Set a fixed random seed for reproducibility
+np.random.seed(42)
+
+# Read the CSV file
+filename = 'C:/Users/18378/OneDrive/桌面/tpp/us-state-capitals.csv'
+data = pd.read_csv(filename)
+
+# Extract coordinates and city names
+coordinates = data[['latitude', 'longitude']].values #coordinates of capital cities
+cities = data['origin'].values # file's column title, means the capital names
 
 
-import math
+# Define start and end cities
+start_city = 'Iowa' # set starting city
+end_city = 'Washington D.C.' # set end city
 
-# (latitude, longitude)
-state_capitals = {
-    'Iowa': (41.5908, -93.6208),
-    'Washington DC': (38.89511, -77.03637),
-    'Alabama': (32.377716, -86.300568),
-    'Alaska': (58.301598, -134.420212),
-    'Arizona': (33.448143, -112.096962),
-    'Arkansas': (34.746613, -92.288986),
-    'California': (38.576668, -121.493629),
-    'Colorado': (39.739227, -104.99025),
-    'Connecticut': (41.764046, -72.682167),
-    'Delaware': (39.157307, -75.519722),
-    'Florida': (30.438118, -84.281296),
-    'Georgia': (33.749027, -84.388229),
-    'Hawaii': (21.307442, -157.857376),
-    'Idaho': (43.617775, -116.199722),
-    'Illinois': (39.798363, -89.654961),
-    'Indiana': (39.768623, -86.162643),
-    'Kansas': (39.048191, -95.677956),
-    'Kentucky': (38.186722, -84.875374),
-    'Louisiana': (30.457069, -91.187393),
-    'Maine': (44.307167, -69.781693),
-    'Maryland': (38.978764, -76.490936),
-    'Massachusetts': (42.358162, -71.063698),
-    'Michigan': (42.733635, -84.555328),
-    'Minnesota': (44.955097, -93.102211),
-    'Mississippi': (32.303848, -90.182106),
-    'Missouri': (38.579201, -92.172935),
-    'Montana': (46.585709, -112.018417),
-    'Nebraska': (40.808075, -96.699654),
-    'Nevada': (39.163914, -119.766121),
-    'New Hampshire': (43.206898, -71.537994),
-    'New Jersey': (40.220596, -74.769913),
-    'New Mexico': (35.68224, -105.939728),
-    'New York': (42.652843, -73.757874),
-    'North Carolina': (35.78043, -78.639099),
-    'North Dakota': (46.82085, -100.783318),
-    'Ohio': (39.961346, -82.999069),
-    'Oklahoma': (35.492207, -97.503342),
-    'Oregon': (44.938461, -123.030403),
-    'Pennsylvania': (40.264378, -76.883598),
-    'Rhode Island': (41.830914, -71.414963),
-    'South Carolina': (34.000343, -81.033211),
-    'South Dakota': (44.367031, -100.346405),
-    'Tennessee': (36.16581, -86.784241),
-    'Texas': (30.27467, -97.740349),
-    'Utah': (40.777477, -111.888237),
-    'Vermont': (44.262436, -72.580536),
-    'Virginia': (37.538857, -77.43364),
-    'Washington': (47.037874, -122.900695),
-    'West Virginia': (38.336246, -81.612328),
-    'Wisconsin': (43.074684, -89.384445),
-    'Wyoming': (41.140259, -104.820236)
-}
+# Determine the indices for start and end cities
+try:
+    start_idx = list(cities).index(start_city) #Finds the index of the start city (Iowa) in the cities array.
+    end_idx = list(cities).index(end_city) #Finds the index of the end city (Washington D.C.) in the cities array.
+except ValueError as e:
+    print(f"Error: {e}")
+    print("Available cities:", cities)
+    exit()
 
-# Calculate the distance between two points using the Haversine formula
-def haversine(coord1, coord2):
-    R = 6371  # Earth radius in kilometers
-    lat1, lon1 = coord1
-    lat2, lon2 = coord2
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c
+# Clustering
+num_clusters = 5  # Set the number of clusters; adjust as needed
+kmeans = KMeans(n_clusters=num_clusters, random_state=42).fit(coordinates)
+labels = kmeans.labels_
 
-# Create a distance matrix
-distances = {}
-for cap1 in state_capitals:
-    distances[cap1] = {}
-    for cap2 in state_capitals:
-        if cap1 != cap2:
-            distances[cap1][cap2] = haversine(state_capitals[cap1], state_capitals[cap2])
-
-def nearest_city(distances, start, end):
-    unvisited = set(state_capitals.keys())
-    unvisited.remove(start)
-    path = [start]
-    current = start
+# Function to calculate the total distance of a route
+def calculate_total_distance(route):
     total_distance = 0
+    for i in range(len(route) - 1):
+        total_distance += geodesic(
+            (coordinates[route[i]][0], coordinates[route[i]][1]),
+            (coordinates[route[i + 1]][0], coordinates[route[i + 1]][1])
+        ).km
+    return total_distance
 
-    while unvisited:
-        nearest = min(unvisited, key=lambda city: distances[current][city])
-        total_distance += distances[current][nearest]
-        current = nearest
-        path.append(current)
-        unvisited.remove(current)
-    total_distance += distances[current][end]
-    path.append(end)
-    return path, total_distance
+# 2-Opt Algorithm for local optimization within clusters
+def two_opt(route):
+    best = route
+    improved = True
+    while improved:
+        improved = False
+        for i in range(1, len(route) - 2):
+            for j in range(i + 1, len(route)):
+                if j - i == 1:
+                    continue
+                new_route = route[:]
+                new_route[i:j] = route[j - 1:i - 1:-1]
+                if calculate_total_distance(new_route) < calculate_total_distance(best):
+                    best = new_route
+                    improved = True
+        route = best
+    return best
 
-start = 'Iowa'
-end = 'Washington DC'
-route, length = nearest_city(distances, start, end)
+# Generate the route for each cluster with optimization
+def generate_cluster_route(cluster_indices, start_city=None, end_city=None):
+    if start_city is not None:
+        cluster_indices = [start_city] + [i for i in cluster_indices if i != start_city]
+    if end_city is not None:
+        cluster_indices = [i for i in cluster_indices if i != end_city] + [end_city]
+    
+    optimized_route = two_opt(cluster_indices)
+    return optimized_route
 
-print("Most efficient route:", route)
-print("Total distance (km):", length)
+# Generate the route across all clusters
+total_route = []
+
+for cluster_id in range(num_clusters):
+    cluster_indices = [i for i, x in enumerate(labels) if x == cluster_id]
+
+    if cluster_id == 0:
+        route = generate_cluster_route(cluster_indices, start_city=start_idx)
+    elif cluster_id == num_clusters - 1:
+        route = generate_cluster_route(cluster_indices, end_city=end_idx)
+    else:
+        route = generate_cluster_route(cluster_indices)
+
+    total_route.extend(route)
+
+# Remove duplicates and ensure the route starts with Iowa and ends with Washington
+total_route = list(dict.fromkeys(total_route))
+total_route = [i for i in total_route if i != start_idx and i != end_idx]
+total_route = [start_idx] + total_route + [end_idx]
+
+# Calculate the total distance in miles
+total_distance_km = calculate_total_distance(total_route)
+total_distance_miles = total_distance_km * 0.621371
+
+# Output the final route and total distance
+final_route = [cities[i] for i in total_route]
+print("Complete route:", " -> ".join(final_route))
+print("Total distance:", total_distance_miles, "miles")
